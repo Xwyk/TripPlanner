@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TripPlanner</title>
+    {{ importmap('app') }}
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏕️ TripPlanner</h1>
+            <p>Planifiez vos voyages, gérez les budgets et les repas</p>
+        </header>
+
+        <!-- Trip Management Section -->
+        <section id="trips-section">
+            <h2>Mes Voyages</h2>
+
+            <!-- Create Trip Form -->
+            <form data-controller="trip" data-action="submit->trip#createTrip" data-trip-api-base-url="/api">
+                <h3>Nouveau Voyage</h3>
+                <div class="form-group">
+                    <label for="trip-name">Nom du voyage</label>
+                    <input type="text" id="trip-name" name="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="trip-nights">Nombre de nuits</label>
+                    <input type="number" id="trip-nights" name="nights" min="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="trip-budget">Budget total (€)</label>
+                    <input type="number" id="trip-budget" name="totalBudget" step="0.01" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="trip-start">Date de début</label>
+                    <input type="date" id="trip-start" name="startDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="trip-description">Description</label>
+                    <textarea id="trip-description" name="description" rows="3"></textarea>
+                </div>
+
+                <button type="submit">Créer le voyage</button>
+            </form>
+
+            <!-- Trips List -->
+            <div data-trip-target="tripsList"></div>
+
+            <!-- Trip Details -->
+            <div data-trip-target="tripDetails"></div>
+        </section>
+
+        <!-- Calendar Section (exemple pour un voyage) -->
+        <section id="calendar-section" style="display: none;">
+            <h2>Calendrier des Présences</h2>
+            <p data-calendar-target="tripInfo"></p>
+
+            <div
+                data-controller="calendar"
+                data-calendar-trip-id="1"
+                data-calendar-nights="10"
+                data-calendar-start-date="2026-07-15"
+                data-calendar-api-base-url="/api">
+                <div data-calendar-target="calendar"></div>
+            </div>
+        </section>
+
+        <!-- Meals Section -->
+        <section id="meals-section" style="display: none;">
+            <h2>Gestion des Repas</h2>
+
+            <!-- Create Meal Form -->
+            <form data-controller="meal" data-action="submit->meal#createMeal" data-meal-trip-id="1" data-meal-api-base-url="/api">
+                <h3>Nouveau Repas</h3>
+                <div class="form-group">
+                    <label for="meal-name">Nom du repas</label>
+                    <input type="text" id="meal-name" name="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="meal-type">Type</label>
+                    <select id="meal-type" name="mealType" required>
+                        <option value="breakfast">Petit-déjeuner</option>
+                        <option value="lunch">Déjeuner</option>
+                        <option value="dinner">Dîner</option>
+                        <option value="snack">En-cas</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="meal-date">Date</label>
+                    <input type="date" id="meal-date" name="date" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="meal-portions">Nombre de portions</label>
+                    <input type="number" id="meal-portions" name="numberOfPortions" min="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="meal-cost">Coût estimé (€)</label>
+                    <input type="number" id="meal-cost" name="estimatedCost" step="0.01">
+                </div>
+
+                <button type="submit">Ajouter le repas</button>
+            </form>
+
+            <!-- Meals List -->
+            <div data-meal-target="mealsList"></div>
+
+            <!-- Ingredients Panel -->
+            <div data-meal-target="ingredientsList"></div>
+        </section>
+    </div>
+
+    <footer>
+        <p>TripPlanner © 2026 - Planifiez vos aventures!</p>
+    </footer>
+</body>
+</html>
