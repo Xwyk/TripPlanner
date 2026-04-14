@@ -7,6 +7,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
@@ -16,7 +17,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: MealRepository::class)]
 #[ApiResource(
@@ -25,6 +26,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
         new Post(),
         new Get(),
         new Put(),
+        new Patch(),
         new Delete(),
     ],
     normalizationContext: ['groups' => ['meal:read']],
@@ -61,10 +63,6 @@ class Meal
     #[Groups(['meal:read', 'meal:write'])]
     private ?string $description = null;
 
-    #[ORM\Column]
-    #[Groups(['meal:read', 'meal:write'])]
-    private ?int $numberOfPortions = null;
-
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
     #[Groups(['meal:read', 'meal:write'])]
     private ?string $estimatedCost = null;
@@ -86,10 +84,18 @@ class Meal
     #[Groups(['meal:read'])]
     private ?\DateTimeImmutable $createdAt = null;
 
+    /** @var Collection<int, ParticipantMeal> */
+    #[ORM\OneToMany(mappedBy: 'meal', targetEntity: ParticipantMeal::class, cascade: ['persist', 'remove'])]
+    #[Groups([
+        'meal:read',
+    ])]
+    private Collection $participantMeals;
+
     public function __construct()
     {
         $this->recipes = new ArrayCollection();
         $this->participants = new ArrayCollection();
+        $this->participantMeals = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
     }
 
@@ -142,15 +148,10 @@ class Meal
         return $this;
     }
 
-    public function getNumberOfPortions(): ?int
+    #[Groups(['meal:read'])]
+    public function getNumberOfPortions(): int
     {
-        return $this->numberOfPortions;
-    }
-
-    public function setNumberOfPortions(int $numberOfPortions): static
-    {
-        $this->numberOfPortions = $numberOfPortions;
-        return $this;
+        return $this->participantMeals->count();
     }
 
     public function getEstimatedCost(): ?string
@@ -224,16 +225,41 @@ class Meal
         return $this->createdAt;
     }
 
+    public function getParticipantMeals(): Collection
+    {
+        return $this->participantMeals;
+    }
+
+    public function addParticipantMeal(ParticipantMeal $participantMeal): static
+    {
+        if (!$this->participantMeals->contains($participantMeal)) {
+            $this->participantMeals->add($participantMeal);
+            $participantMeal->setMeal($this);
+        }
+        return $this;
+    }
+
+    public function removeParticipantMeal(ParticipantMeal $participantMeal): static
+    {
+        if ($this->participantMeals->removeElement($participantMeal)) {
+            if ($participantMeal->getMeal() === $this) {
+                $participantMeal->setMeal(null);
+            }
+        }
+        return $this;
+    }
+
     /**
      * Calcule le coût par portion pour ce repas
      */
     #[Groups(['meal:read'])]
     public function getCostPerPortion(): ?float
     {
-        if ($this->numberOfPortions === null || $this->numberOfPortions === 0 || $this->estimatedCost === null) {
+        $portions = $this->getNumberOfPortions();
+        if ($portions === 0 || $this->estimatedCost === null) {
             return null;
         }
-        return (float) $this->estimatedCost / $this->numberOfPortions;
+        return (float) $this->estimatedCost / $portions;
     }
 
     /**
@@ -256,8 +282,9 @@ class Meal
                 $baseQuantity = $recipeIngredient->getQuantity();
                 $baseUnit = $recipeIngredient->getUnit();
 
-                // Ajuster la quantité selon le nombre de portions
-                $ratio = $this->numberOfPortions / $recipe->getDefaultPortions();
+                // Ajuster la quantité selon le nombre de participants
+                $defaultPortions = $recipe->getDefaultPortions() ?: 1;
+                $ratio = $this->getNumberOfPortions() / $defaultPortions;
                 $adjustedQuantity = $baseQuantity * $ratio;
 
                 if (isset($ingredients[$ingredientId])) {

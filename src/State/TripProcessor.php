@@ -32,8 +32,8 @@ class TripProcessor implements ProcessorInterface
                 if (isset($jsonData['nights'])) {
                     $trip->setNights((int) $jsonData['nights']);
                 }
-                if (isset($jsonData['totalBudget'])) {
-                    $trip->setTotalBudget((string) $jsonData['totalBudget']);
+                if (isset($jsonData['cottageCost'])) {
+                    $trip->setCottageCost((float) $jsonData['cottageCost']);
                 }
                 if (isset($jsonData['startDate'])) {
                     $trip->setStartDate(new \DateTime($jsonData['startDate']));

@@ -14,26 +14,33 @@ use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use App\Repository\TripRepository;
 use App\State\TripProcessor;
 use App\State\TripProvider;
+use App\Utils\ApiGroups;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: TripRepository::class)]
 #[ApiResource(
     operations: [
         new GetCollection(
-            provider: TripProvider::class
+            provider: TripProvider::class,
+            normalizationContext: ['groups' => [Trip::GROUP_READCOLLECTION, ApiGroups::GROUP_READCOLLECTION]],
         ),
         new Post(
-            processor: TripProcessor::class
+            processor: TripProcessor::class,
+            normalizationContext: ['groups' => [Trip::GROUP_READ, ApiGroups::GROUP_READ]],
+            denormalizationContext: ['groups' => [Trip::GROUP_CREATE]],
         ),
         new Get(
-            provider: TripProvider::class
+            provider: TripProvider::class,
+            normalizationContext: ['groups' => [Trip::GROUP_READ, ApiGroups::GROUP_READ]],
         ),
         new Put(
-            processor: TripProcessor::class
+            processor: TripProcessor::class,
+            normalizationContext: ['groups' => [Trip::GROUP_READ, ApiGroups::GROUP_READ]],
+            denormalizationContext: ['groups' => [Trip::GROUP_UPDATE]],
         ),
         new Delete(),
     ],
@@ -44,49 +51,111 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ApiFilter(OrderFilter::class, properties: ['startDate', 'name'])]
 class Trip
 {
+    private const string GROUP_CREATE = 'trip:create';
+    private const string GROUP_UPDATE = 'trip:update';
+    private const string GROUP_READCOLLECTION = 'trip:readcollection';
+    private const string GROUP_READ = 'trip:read';
+    private const string GROUP_DELETE = 'trip:delete';
+
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['trip:read', 'trip:write'])]
+    #[Groups([
+        self::GROUP_READ,
+        self::GROUP_READCOLLECTION,
+        self::GROUP_CREATE,
+        self::GROUP_UPDATE,
+        self::GROUP_DELETE,
+        ApiGroups::GROUP_READ,
+        ApiGroups::GROUP_READCOLLECTION,
+    ])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['trip:read', 'trip:write'])]
-    private ?string $name = null;
+    #[Groups([
+        self::GROUP_READ,
+        self::GROUP_READCOLLECTION,
+        self::GROUP_CREATE,
+        self::GROUP_UPDATE,
+        ApiGroups::GROUP_READ,
+        ApiGroups::GROUP_READCOLLECTION
+    ])]
+    private string $name;
 
     #[ORM\Column]
-    #[Groups(['trip:read', 'trip:write'])]
-    private ?int $nights = null;
+    #[Groups([
+        self::GROUP_READ,
+        self::GROUP_READCOLLECTION,
+        self::GROUP_CREATE,
+        self::GROUP_UPDATE,
+        ApiGroups::GROUP_READ,
+        ApiGroups::GROUP_READCOLLECTION
+    ])]
+    private int $nights = 1;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
-    #[Groups(['trip:read', 'trip:write'])]
-    private ?string $totalBudget = null;
+    #[ORM\Column]
+    #[Groups([
+        self::GROUP_READ,
+        self::GROUP_READCOLLECTION,
+        self::GROUP_CREATE,
+        self::GROUP_UPDATE,
+        ApiGroups::GROUP_READ,
+        ApiGroups::GROUP_READCOLLECTION
+    ])]
+    private float $cottageCost = 0;
 
     #[ORM\Column(type: Types::DATE_MUTABLE)]
-    #[Groups(['trip:read', 'trip:write'])]
-    private ?\DateTimeInterface $startDate = null;
+    #[Groups([
+        self::GROUP_READ,
+        self::GROUP_READCOLLECTION,
+        self::GROUP_CREATE,
+        self::GROUP_UPDATE,
+        ApiGroups::GROUP_READ,
+        ApiGroups::GROUP_READCOLLECTION
+    ])]
+    private \DateTimeInterface $startDate;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    #[Groups(['trip:read', 'trip:write'])]
-    private ?string $description = null;
+    #[Groups([
+        self::GROUP_READ,
+        self::GROUP_READCOLLECTION,
+        self::GROUP_CREATE,
+        self::GROUP_UPDATE,
+        ApiGroups::GROUP_READ,
+        ApiGroups::GROUP_READCOLLECTION
+    ])]
+    private string $description;
 
     #[ORM\Column]
-    #[Groups(['trip:read'])]
-    private ?\DateTimeImmutable $createdAt = null;
+    #[Groups([
+        self::GROUP_READ,
+        self::GROUP_READCOLLECTION,
+        ApiGroups::GROUP_READ,
+        ApiGroups::GROUP_READCOLLECTION
+    ])]
+    private \DateTimeImmutable $createdAt;
 
-    #[ORM\OneToMany(mappedBy: 'trip', targetEntity: Participant::class, cascade: ['persist', 'remove'])]
-    #[Groups(['trip:read'])]
-    private Collection $participants;
+    /** @var Collection<int, ParticipantTrip> */
+    #[ORM\OneToMany(mappedBy: 'trip', targetEntity: ParticipantTrip::class, cascade: ['persist', 'remove'])]
+    #[Groups([
+        self::GROUP_READ,
+    ])]
+    private Collection $participantTrips;
 
+    /** @var Collection<int, Meal> */
     #[ORM\OneToMany(mappedBy: 'trip', targetEntity: Meal::class, cascade: ['persist', 'remove'])]
-    #[Groups(['trip:read'])]
+    #[Groups([
+        self::GROUP_READ,
+    ])]
     private Collection $meals;
 
     public function __construct()
     {
-        $this->participants = new ArrayCollection();
+        $this->participantTrips = new ArrayCollection();
         $this->meals = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
+        $this->startDate = new \DateTimeImmutable('now');
     }
 
     public function getId(): ?int
@@ -94,7 +163,7 @@ class Trip
         return $this->id;
     }
 
-    public function getName(): ?string
+    public function getName(): string
     {
         return $this->name;
     }
@@ -105,7 +174,7 @@ class Trip
         return $this;
     }
 
-    public function getNights(): ?int
+    public function getNights(): int
     {
         return $this->nights;
     }
@@ -116,18 +185,18 @@ class Trip
         return $this;
     }
 
-    public function getTotalBudget(): ?string
+    public function getCottageCost(): float
     {
-        return $this->totalBudget;
+        return $this->cottageCost;
     }
 
-    public function setTotalBudget(string $totalBudget): static
+    public function setCottageCost(float $cottageCost): static
     {
-        $this->totalBudget = $totalBudget;
+        $this->cottageCost = $cottageCost;
         return $this;
     }
 
-    public function getStartDate(): ?\DateTimeInterface
+    public function getStartDate(): \DateTimeInterface
     {
         return $this->startDate;
     }
@@ -149,33 +218,33 @@ class Trip
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
     }
 
     /**
-     * @return Collection<int, Participant>
+     * @return Collection<int, ParticipantTrip>
      */
-    public function getParticipants(): Collection
+    public function getParticipantTrips(): Collection
     {
-        return $this->participants;
+        return $this->participantTrips;
     }
 
-    public function addParticipant(Participant $participant): static
+    public function addParticipantTrip(ParticipantTrip $participantTrip): static
     {
-        if (!$this->participants->contains($participant)) {
-            $this->participants->add($participant);
-            $participant->setTrip($this);
+        if (!$this->participantTrips->contains($participantTrip)) {
+            $this->participantTrips->add($participantTrip);
+            $participantTrip->setTrip($this);
         }
         return $this;
     }
 
-    public function removeParticipant(Participant $participant): static
+    public function removeParticipantTrip(ParticipantTrip $participantTrip): static
     {
-        if ($this->participants->removeElement($participant)) {
-            if ($participant->getTrip() === $this) {
-                $participant->setTrip(null);
+        if ($this->participantTrips->removeElement($participantTrip)) {
+            if ($participantTrip->getTrip() === $this) {
+                $participantTrip->setTrip(null);
             }
         }
         return $this;
@@ -211,20 +280,20 @@ class Trip
     /**
      * Calcule le coût par nuitée
      */
-    #[Groups(['trip:read'])]
+    #[Groups([self::GROUP_READ])]
     public function getCostPerNight(): ?float
     {
-        if ($this->nights === null || $this->nights === 0 || $this->totalBudget === null) {
+        if ($this->nights === null || $this->nights === 0 || $this->cottageCost === null) {
             return null;
         }
-        return (float) $this->totalBudget / $this->nights;
+        return (float) $this->cottageCost / $this->nights;
     }
 
     /**
      * Calcule le coût total pour chaque participant
      * @return array<string, float>
      */
-    #[Groups(['trip:read'])]
+    #[Groups([self::GROUP_READ])]
     public function getParticipantsCosts(): array
     {
         $costs = [];
@@ -234,10 +303,10 @@ class Trip
             return $costs;
         }
 
-        foreach ($this->participants as $participant) {
-            $nightsPresent = $participant->getNightsPresent();
-            $participantId = $participant->getId() ?? 'unknown';
-            $costs[$participantId] = $nightsPresent * $costPerNight;
+        foreach ($this->participantTrips as $participantTrip) {
+            $nightsPresent = $participantTrip->getNightsPresent();
+            $participantId = $participantTrip->getParticipant()?->getId() ?? 'unknown';
+            $costs[$participantId] = count($nightsPresent ?? []) * $costPerNight;
         }
 
         return $costs;

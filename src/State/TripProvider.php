@@ -14,7 +14,6 @@ use Doctrine\ORM\Tools\Pagination\Paginator;
 class TripProvider implements ProviderInterface
 {
     public function __construct(
-        private EntityManagerInterface $entityManager,
         private TripRepository $tripRepository
     ) {
     }

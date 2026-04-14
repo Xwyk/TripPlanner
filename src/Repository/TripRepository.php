@@ -16,7 +16,7 @@ class TripRepository extends ServiceEntityRepository
         parent::__construct($registry, Trip::class);
     }
 
-    public function save(Trip $entity, bool $flush = false): void
+    public function add(Trip $entity, bool $flush = false): void
     {
         $this->getEntityManager()->persist($entity);
 
@@ -25,7 +25,7 @@ class TripRepository extends ServiceEntityRepository
         }
     }
 
-    public function remove(Trip $entity, bool $flush = false): void
+    public function delete(Trip $entity, bool $flush = false): void
     {
         $this->getEntityManager()->remove($entity);
 

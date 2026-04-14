@@ -1,16 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import type { Meal } from '../types/api';
-import { mealService } from '../services/api';
+import { type Meal, mealService } from '../services/api';
+import MealForm, { type MealFormMode } from './MealForm';
+import Modal from './Modal';
+
+interface ParticipantInfo {
+  id: number;
+  name: string;
+}
 
 interface MealListProps {
   tripId?: number;
+  participants?: ParticipantInfo[];
+  startDate?: string;
 }
 
-const MealList: React.FC<MealListProps> = ({ tripId }) => {
+const MealList: React.FC<MealListProps> = ({ tripId, participants = [], startDate }) => {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [formMode, setFormMode] = useState<{ mode: MealFormMode; meal: Meal | null } | null>(null);
 
   useEffect(() => {
     loadMeals();
@@ -36,10 +44,7 @@ const MealList: React.FC<MealListProps> = ({ tripId }) => {
   };
 
   const deleteMeal = async (id: number) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')) {
-      return;
-    }
-
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce repas ?')) return;
     try {
       await mealService.delete(id);
       setMeals(meals.filter(meal => meal.id !== id));
@@ -49,96 +54,134 @@ const MealList: React.FC<MealListProps> = ({ tripId }) => {
     }
   };
 
-  const getMealTypeLabel = (type: string): string => {
-    const labels: Record<string, string> = {
-      breakfast: 'Petit-déjeuner',
-      lunch: 'Déjeuner',
-      dinner: 'Dîner',
-      snack: 'En-cas',
-    };
-    return labels[type] || type;
-  };
-
   const getMealTypeEmoji = (type: string): string => {
-    const emojis: Record<string, string> = {
-      breakfast: '🌅',
-      lunch: '☀️',
-      dinner: '🌙',
-      snack: '🍎',
-    };
+    const emojis: Record<string, string> = { breakfast: '🌅', lunch: '☀️', dinner: '🌙', snack: '🍎' };
     return emojis[type] || '🍽️';
   };
 
-  if (loading) {
-    return <div className="loading">Chargement...</div>;
-  }
+  const getMealParticipants = (meal: Meal): ParticipantInfo[] => {
+    const pms = (meal as any).participantMeals ?? [];
+    return pms.map((pm: any) => pm.participant).filter((p: any) => p?.id && p?.name);
+  };
+
+  const getMealRecipes = (meal: Meal): string[] => {
+    const recipes = (meal as any).recipes ?? [];
+    return recipes.filter((r: any) => r?.name).map((r: any) => r.name);
+  };
+
+  const mealsByDate = meals.reduce<Record<string, Meal[]>>((acc, meal) => {
+    const key = meal.date ?? '';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(meal);
+    return acc;
+  }, {});
+
+  const mealTypeOrder: Record<string, number> = { breakfast: 0, lunch: 1, snack: 2, dinner: 3 };
+  const sortedDates = Object.keys(mealsByDate).filter(Boolean).sort();
+
+  if (loading) return <div className="loading">Chargement...</div>;
 
   return (
     <div className="meal-list">
       <div className="meal-list-header">
-        <h2>🍽️ Repas ({meals.length})</h2>
-        {tripId && (
-          <Link to={`/trips/${tripId}/meals/new`} className="btn btn-primary">
+        <h2>Repas ({meals.length})</h2>
+        {tripId && !formMode && (
+          <button onClick={() => setFormMode({ mode: 'create', meal: null })} className="btn btn-primary">
             + Nouveau Repas
-          </Link>
+          </button>
         )}
       </div>
 
       {error && <div className="error">{error}</div>}
 
-      {meals.length === 0 ? (
+      {formMode && tripId && (
+        <Modal
+          open={!!formMode}
+          onClose={() => setFormMode(null)}
+          title={formMode.mode === 'create' ? 'Nouveau repas' : 'Modifier le repas'}
+        >
+          <MealForm
+            mode={formMode.mode}
+            tripId={tripId}
+            startDate={startDate}
+            meal={formMode.meal}
+            participants={participants}
+            onSave={() => { setFormMode(null); loadMeals(); }}
+            onCancel={() => setFormMode(null)}
+          />
+        </Modal>
+      )}
+
+      {meals.length === 0 && !formMode ? (
         <p className="empty-state">Aucun repas planifié pour le moment.</p>
       ) : (
-        <div className="meal-cards">
-          {meals.map((meal) => (
-            <div key={meal.id} className="meal-card">
-              <div className="meal-header">
-                <h3>
-                  {getMealTypeEmoji(meal.mealType)} {meal.name}
-                </h3>
-                <span className="meal-type-badge">{getMealTypeLabel(meal.mealType)}</span>
-              </div>
-              <div className="meal-info">
-                <p><strong>Date:</strong> {formatDate(meal.date)}</p>
-                <p><strong>Portions:</strong> {meal.numberOfPortions}</p>
-                {meal.estimatedCost && (
-                  <>
-                    <p><strong>Coût estimé:</strong> {formatMoney(meal.estimatedCost)}</p>
-                    {meal.costPerPortion && (
-                      <p><strong>Coût par portion:</strong> {formatMoney(meal.costPerPortion.toString())}</p>
-                    )}
-                  </>
-                )}
-              </div>
-              <div className="meal-actions">
-                <Link to={`/meals/${meal.id}/ingredients`} className="btn btn-sm btn-secondary">
-                  Voir ingrédients
-                </Link>
-                <Link to={`/meals/${meal.id}/edit`} className="btn btn-sm btn-secondary">
-                  Modifier
-                </Link>
-                <button
-                  onClick={() => meal.id && deleteMeal(meal.id)}
-                  className="btn btn-sm btn-danger"
-                >
-                  Supprimer
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+        <table className="meal-table">
+          <thead>
+            <tr>
+              <th>Repas</th>
+              <th>Participants</th>
+              <th>Recettes</th>
+              <th>Coût</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedDates.map((date) => {
+              const dayMeals = mealsByDate[date]
+                .sort((a, b) => (mealTypeOrder[a.mealType ?? ''] ?? 99) - (mealTypeOrder[b.mealType ?? ''] ?? 99));
+
+              return (
+                <React.Fragment key={date}>
+                  <tr className="meal-date-row">
+                    <td colSpan={5}>{formatDateShort(date)}</td>
+                  </tr>
+                  {dayMeals.map((meal) => {
+                    const mealParticipants = getMealParticipants(meal);
+                    const mealRecipes = getMealRecipes(meal);
+
+                    return (
+                      <tr key={meal.id} className="meal-row">
+                        <td>
+                          <span className="meal-type-icon">{meal.mealType ? getMealTypeEmoji(meal.mealType) : ''}</span>
+                          {meal.name}
+                        </td>
+                        <td className="meal-participants-cell">
+                          <span className="participant-count">{mealParticipants.length}</span>
+                          {mealParticipants.length > 0 && (
+                            <span className="participant-names"> — {mealParticipants.map(p => p.name).join(', ')}</span>
+                          )}
+                        </td>
+                        <td>
+                          {mealRecipes.length > 0 ? mealRecipes.join(', ') : '-'}
+                        </td>
+                        <td>{meal.estimatedCost ? formatMoney(meal.estimatedCost) : '-'}</td>
+                        <td className="meal-actions-cell">
+                          <button onClick={() => setFormMode({ mode: 'edit', meal })} className="btn btn-sm btn-secondary">
+                            Modifier
+                          </button>
+                          <button onClick={() => meal.id && deleteMeal(meal.id)} className="btn btn-sm btn-danger">
+                            Supprimer
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
       )}
     </div>
   );
 };
 
-const formatDate = (dateString: string): string => {
+const formatDateShort = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleDateString('fr-FR', {
     weekday: 'long',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
+    day: 'numeric',
+    month: 'long',
   });
 };
 

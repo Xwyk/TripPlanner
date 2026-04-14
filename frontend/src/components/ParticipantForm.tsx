@@ -1,61 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import type { Trip } from '../types/api';
-import { tripService, participantService } from '../services/api';
+import { type TripReadCollection, tripService, participantService, participantTripService } from '../services/api';
 
 const ParticipantForm: React.FC = () => {
-  const { tripId, participantId } = useParams();
+  const { tripId } = useParams();
   const navigate = useNavigate();
-  const [trips, setTrips] = useState<Trip[]>([]);
+  const [trips, setTrips] = useState<TripReadCollection[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    arrivalDate: '',
-    departureDate: '',
-    nightsPresent: [] as number[],
     trip: '',
   });
 
   useEffect(() => {
     loadTrips();
-    if (participantId) {
-      loadParticipant(parseInt(participantId));
-    }
-  }, [participantId, tripId]);
+  }, [tripId]);
 
   const loadTrips = async () => {
     try {
       const response = await tripService.getAll();
-      setTrips(response['hydra:member'] || []);
-
+      const list = response?.['hydra:member'] || [];
+      setTrips(list);
       if (tripId) {
         setFormData(prev => ({ ...prev, trip: `/api/trips/${tripId}` }));
       }
     } catch (err) {
       console.error('Error loading trips:', err);
-    }
-  };
-
-  const loadParticipant = async (id: number) => {
-    try {
-      setLoading(true);
-      const data = await participantService.getById(id);
-      setFormData({
-        name: data.name || '',
-        email: data.email || '',
-        arrivalDate: data.arrivalDate || '',
-        departureDate: data.departureDate || '',
-        nightsPresent: data.nightsPresent || [],
-        trip: typeof data.trip === 'string' ? data.trip : data.trip?.['@id'] || '',
-      });
-    } catch (err) {
-      setError('Erreur lors du chargement du participant');
-      console.error(err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -66,11 +39,20 @@ const ParticipantForm: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      if (participantId) {
-        await participantService.update(parseInt(participantId), formData);
-      } else {
-        await participantService.create(formData);
-      }
+      // Créer le participant
+      const participant = await participantService.create({
+        name: formData.name,
+        email: formData.email || null,
+      } as any);
+
+      if (!participant) throw new Error('Participant creation failed');
+
+      // Lier au trip via ParticipantTrip
+      const pt = (participant as any);
+      await participantTripService.create({
+        participant: pt['@id'] || `/api/participants/${pt.id}`,
+        trip: formData.trip,
+      } as any);
 
       navigate(formData.trip ? `/trips/${formData.trip.split('/').pop()}` : '/trips');
     } catch (err) {
@@ -86,14 +68,14 @@ const ParticipantForm: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  if (loading && participantId) {
+  if (loading) {
     return <div className="loading">Chargement...</div>;
   }
 
   return (
     <div className="participant-form">
       <div className="form-header">
-        <h2>{participantId ? 'Modifier le Participant' : 'Nouveau Participant'}</h2>
+        <h2>Nouveau Participant</h2>
         <Link to={tripId ? `/trips/${tripId}` : '/trips'} className="btn btn-secondary">
           Retour
         </Link>
@@ -113,7 +95,7 @@ const ParticipantForm: React.FC = () => {
             disabled={!!tripId}
           >
             <option value="">Sélectionnez un voyage</option>
-            {trips.map((trip) => (
+            {trips.map((trip: any) => (
               <option key={trip.id} value={trip['@id']}>
                 {trip.name} - {trip.startDate}
               </option>
@@ -144,37 +126,13 @@ const ParticipantForm: React.FC = () => {
           />
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="arrivalDate">Date d'arrivée</label>
-            <input
-              type="date"
-              id="arrivalDate"
-              name="arrivalDate"
-              value={formData.arrivalDate}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="departureDate">Date de départ</label>
-            <input
-              type="date"
-              id="departureDate"
-              name="departureDate"
-              value={formData.departureDate}
-              onChange={handleChange}
-            />
-          </div>
-        </div>
-
         <div className="form-info">
-          <p>ℹ️ Les nuits de présence pourront être définies via le calendrier après la création.</p>
+          <p>Les nuits de présence pourront être définies via le calendrier après la création.</p>
         </div>
 
         <div className="form-actions">
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Enregistrement...' : participantId ? 'Mettre à jour' : 'Créer le participant'}
+            {loading ? 'Enregistrement...' : 'Créer le participant'}
           </button>
           <Link to={tripId ? `/trips/${tripId}` : '/trips'} className="btn btn-secondary">
             Annuler

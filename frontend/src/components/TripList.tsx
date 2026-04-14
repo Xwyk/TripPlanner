@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { Trip } from '../types/api';
-import { tripService } from '../services/api';
+import { type TripReadCollection, tripService } from '../services/api';
 
 const TripList: React.FC = () => {
-  const [trips, setTrips] = useState<Trip[]>([]);
+  const [trips, setTrips] = useState<TripReadCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,11 +67,8 @@ const TripList: React.FC = () => {
             <div key={trip.id} className="trip-card">
               <h3>{trip.name}</h3>
               <div className="trip-info">
-                <p><strong>Dates:</strong> {formatDate(trip.startDate)} ({trip.nights} nuits)</p>
-                <p><strong>Budget:</strong> {formatMoney(trip.totalBudget)}</p>
-                <p><strong>Coût par nuit:</strong> {trip.costPerNight ? formatMoney(trip.costPerNight.toString()) : 'N/A'}</p>
-                <p><strong>Participants:</strong> {trip.participants?.length || 0}</p>
-                <p><strong>Repas:</strong> {trip.meals?.length || 0}</p>
+                <p><strong>Dates:</strong> {trip.startDate ? formatDate(trip.startDate) : 'N/A'} ({trip.nights} nuits)</p>
+                <p><strong>Budget:</strong> {formatMoney(trip.cottageCost?.toString() ?? '0')}</p>
               </div>
               <div className="trip-actions">
                 <Link to={`/trips/${trip.id}`} className="btn btn-secondary">

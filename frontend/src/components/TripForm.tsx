@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import type { Trip } from '../types/api';
-import { tripService } from '../services/api';
+import { type TripRead, tripService } from '../services/api';
 
 interface TripFormProps {
-  trip?: Trip;
+  trip?: TripRead;
 }
 
 const TripForm: React.FC<TripFormProps> = ({ trip }) => {
@@ -12,7 +11,7 @@ const TripForm: React.FC<TripFormProps> = ({ trip }) => {
   const [formData, setFormData] = useState({
     name: trip?.name || '',
     nights: trip?.nights || 1,
-    totalBudget: trip?.totalBudget || '',
+    cottageCost: trip?.cottageCost?.toString() || '',
     startDate: trip?.startDate || '',
     description: trip?.description || '',
   });
@@ -26,10 +25,18 @@ const TripForm: React.FC<TripFormProps> = ({ trip }) => {
       setLoading(true);
       setError(null);
 
+      const payload = {
+        name: formData.name,
+        nights: formData.nights,
+        cottageCost: formData.cottageCost === '' ? 0 : parseFloat(formData.cottageCost),
+        startDate: formData.startDate || undefined,
+        description: formData.description || null,
+      };
+
       if (trip?.id) {
-        await tripService.update(trip.id, formData);
+        await tripService.update(trip.id, payload);
       } else {
-        await tripService.create(formData);
+        await tripService.create(payload);
       }
 
       navigate('/trips');
@@ -88,12 +95,12 @@ const TripForm: React.FC<TripFormProps> = ({ trip }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="totalBudget">Budget total (€) *</label>
+            <label htmlFor="cottageCost">Budget total (€) *</label>
             <input
               type="number"
-              id="totalBudget"
-              name="totalBudget"
-              value={formData.totalBudget}
+              id="cottageCost"
+              name="cottageCost"
+              value={formData.cottageCost}
               onChange={handleChange}
               step="0.01"
               min="0"
