@@ -38,7 +38,11 @@ class RecipeIngredient
 
     #[ORM\Column]
     #[Groups(['recipe:read', 'recipe:write', 'meal:read'])]
-    private ?float $quantity = null;
+    private ?float $quantityPerPerson = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
+    #[Groups(['recipe:read', 'recipe:write', 'meal:read'])]
+    private ?string $pricePerPerson = null;
 
     #[ORM\Column(length: 50, nullable: true)]
     #[Groups(['recipe:read', 'recipe:write', 'meal:read'])]
@@ -71,14 +75,25 @@ class RecipeIngredient
         return $this->id;
     }
 
-    public function getQuantity(): ?float
+    public function getQuantityPerPerson(): ?float
     {
-        return $this->quantity;
+        return $this->quantityPerPerson;
     }
 
-    public function setQuantity(float $quantity): static
+    public function setQuantityPerPerson(float $quantityPerPerson): static
     {
-        $this->quantity = $quantity;
+        $this->quantityPerPerson = $quantityPerPerson;
+        return $this;
+    }
+
+    public function getPricePerPerson(): ?string
+    {
+        return $this->pricePerPerson;
+    }
+
+    public function setPricePerPerson(?string $pricePerPerson): static
+    {
+        $this->pricePerPerson = $pricePerPerson;
         return $this;
     }
 

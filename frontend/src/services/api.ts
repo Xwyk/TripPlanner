@@ -318,6 +318,11 @@ export const recipeService = {
   delete: async (id: number) => {
     await client.DELETE('/api/recipes/{id}', { params: { path: { id: String(id) } } });
   },
+
+  getByTrip: async (tripId: number) => {
+    const { data } = await client.GET('/api/recipes', { params: { query: { trip: `/api/trips/${tripId}` } as any } });
+    return data ? normalizeHydra(data) : null;
+  },
 };
 
 export const ingredientService = {

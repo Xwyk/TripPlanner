@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { type Meal, mealService } from '../services/api';
+import { type Meal, type Recipe, mealService } from '../services/api';
 import MealForm, { type MealFormMode } from './MealForm';
+import RecipeForm from './RecipeForm';
 import Modal from './Modal';
 
 interface ParticipantInfo {
@@ -19,6 +20,7 @@ const MealList: React.FC<MealListProps> = ({ tripId, participants = [], startDat
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formMode, setFormMode] = useState<{ mode: MealFormMode; meal: Meal | null } | null>(null);
+  const [editRecipe, setEditRecipe] = useState<Recipe | null>(null);
 
   useEffect(() => {
     loadMeals();
@@ -64,9 +66,9 @@ const MealList: React.FC<MealListProps> = ({ tripId, participants = [], startDat
     return pms.map((pm: any) => pm.participant).filter((p: any) => p?.id && p?.name);
   };
 
-  const getMealRecipes = (meal: Meal): string[] => {
+  const getMealRecipes = (meal: Meal): { name: string; recipe: any }[] => {
     const recipes = (meal as any).recipes ?? [];
-    return recipes.filter((r: any) => r?.name).map((r: any) => r.name);
+    return recipes.filter((r: any) => r?.name).map((r: any) => ({ name: r.name, recipe: r }));
   };
 
   const mealsByDate = meals.reduce<Record<string, Meal[]>>((acc, meal) => {
@@ -112,6 +114,22 @@ const MealList: React.FC<MealListProps> = ({ tripId, participants = [], startDat
         </Modal>
       )}
 
+      {editRecipe && tripId && (
+        <Modal
+          open={!!editRecipe}
+          onClose={() => setEditRecipe(null)}
+          title="Modifier la recette"
+        >
+          <RecipeForm
+            mode="edit"
+            tripId={tripId}
+            recipe={editRecipe}
+            onSave={() => { setEditRecipe(null); loadMeals(); }}
+            onCancel={() => setEditRecipe(null)}
+          />
+        </Modal>
+      )}
+
       {meals.length === 0 && !formMode ? (
         <p className="empty-state">Aucun repas planifié pour le moment.</p>
       ) : (
@@ -152,9 +170,24 @@ const MealList: React.FC<MealListProps> = ({ tripId, participants = [], startDat
                           )}
                         </td>
                         <td>
-                          {mealRecipes.length > 0 ? mealRecipes.join(', ') : '-'}
+                          {mealRecipes.length > 0 ? mealRecipes.map((r, i) => (
+                            <React.Fragment key={i}>
+                              {i > 0 && ', '}
+                              <span>
+                                {r.name}
+                                <button type="button" onClick={() => setEditRecipe(r.recipe)} className="btn btn-sm btn-secondary" title="Modifier la recette" style={{ marginLeft: '0.3em', padding: '0 0.3em' }}>✎</button>
+                              </span>
+                            </React.Fragment>
+                          )) : '-'}
                         </td>
-                        <td>{meal.estimatedCost ? formatMoney(meal.estimatedCost) : '-'}</td>
+                        <td>
+                          {(meal as any).totalCost != null || (meal as any).costPerPortion != null ? (
+                            <>
+                              {(meal as any).costPerPortion != null && `${(meal as any).costPerPortion.toFixed(2)}€/pers`}
+                              {(meal as any).totalCost != null && ` (${(meal as any).totalCost.toFixed(2)}€ total)`}
+                            </>
+                          ) : '-'}
+                        </td>
                         <td className="meal-actions-cell">
                           <button onClick={() => setFormMode({ mode: 'edit', meal })} className="btn btn-sm btn-secondary">
                             Modifier

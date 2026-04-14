@@ -63,10 +63,6 @@ class Meal
     #[Groups(['meal:read', 'meal:write'])]
     private ?string $description = null;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
-    #[Groups(['meal:read', 'meal:write'])]
-    private ?string $estimatedCost = null;
-
     #[ORM\ManyToOne(inversedBy: 'meals')]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['meal:write'])]
@@ -154,17 +150,6 @@ class Meal
         return $this->participantMeals->count();
     }
 
-    public function getEstimatedCost(): ?string
-    {
-        return $this->estimatedCost;
-    }
-
-    public function setEstimatedCost(?string $estimatedCost): static
-    {
-        $this->estimatedCost = $estimatedCost;
-        return $this;
-    }
-
     public function getTrip(): ?Trip
     {
         return $this->trip;
@@ -250,20 +235,40 @@ class Meal
     }
 
     /**
-     * Calcule le coût par portion pour ce repas
+     * Calcule le coût par personne pour ce repas (somme des costPerPortion des recettes)
      */
     #[Groups(['meal:read'])]
     public function getCostPerPortion(): ?float
     {
+        $total = 0.0;
+        $hasCost = false;
+        foreach ($this->recipes as $recipe) {
+            $cost = $recipe->getCostPerPortion();
+            if ($cost !== null) {
+                $total += $cost;
+                $hasCost = true;
+            }
+        }
+        return $hasCost ? $total : null;
+    }
+
+    /**
+     * Calcule le coût total du repas (costPerPortion * nombre de participants)
+     */
+    #[Groups(['meal:read'])]
+    public function getTotalCost(): ?float
+    {
+        $costPerPortion = $this->getCostPerPortion();
         $portions = $this->getNumberOfPortions();
-        if ($portions === 0 || $this->estimatedCost === null) {
+        if ($costPerPortion === null || $portions === 0) {
             return null;
         }
-        return (float) $this->estimatedCost / $portions;
+        return $costPerPortion * $portions;
     }
 
     /**
      * Récupère tous les ingrédients nécessaires pour ce repas
+     * quantite = quantityPerPerson * numberOfPortions
      * @return array<string, array{name: string, quantity: float, unit: string}>
      */
     #[Groups(['meal:read'])]
@@ -279,13 +284,10 @@ class Meal
                 }
 
                 $ingredientId = $ingredient->getId() ?? 'unknown';
-                $baseQuantity = $recipeIngredient->getQuantity();
+                $quantityPerPerson = $recipeIngredient->getQuantityPerPerson();
                 $baseUnit = $recipeIngredient->getUnit();
 
-                // Ajuster la quantité selon le nombre de participants
-                $defaultPortions = $recipe->getDefaultPortions() ?: 1;
-                $ratio = $this->getNumberOfPortions() / $defaultPortions;
-                $adjustedQuantity = $baseQuantity * $ratio;
+                $adjustedQuantity = $quantityPerPerson * $this->getNumberOfPortions();
 
                 if (isset($ingredients[$ingredientId])) {
                     $ingredients[$ingredientId]['quantity'] += $adjustedQuantity;

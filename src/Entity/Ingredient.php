@@ -44,10 +44,6 @@ class Ingredient
     #[Groups(['ingredient:read', 'ingredient:write', 'recipe:read', 'meal:read'])]
     private ?string $name = null;
 
-    #[ORM\Column(length: 50, nullable: true)]
-    #[Groups(['ingredient:read', 'ingredient:write', 'recipe:read', 'meal:read'])]
-    private ?string $defaultUnit = null;
-
     #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
     #[Groups(['ingredient:read', 'ingredient:write'])]
     private ?string $defaultQuantity = null;
@@ -90,17 +86,6 @@ class Ingredient
     public function setName(string $name): static
     {
         $this->name = $name;
-        return $this;
-    }
-
-    public function getDefaultUnit(): ?string
-    {
-        return $this->defaultUnit;
-    }
-
-    public function setDefaultUnit(?string $defaultUnit): static
-    {
-        $this->defaultUnit = $defaultUnit;
         return $this;
     }
 

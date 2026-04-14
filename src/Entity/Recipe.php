@@ -30,7 +30,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
     normalizationContext: ['groups' => ['recipe:read']],
     denormalizationContext: ['groups' => ['recipe:write']],
 )]
-#[ApiFilter(SearchFilter::class, properties: ['name' => 'partial', 'category' => 'exact'])]
+#[ApiFilter(SearchFilter::class, properties: ['name' => 'partial', 'category' => 'exact', 'trip' => 'exact'])]
 #[ApiFilter(OrderFilter::class, properties: ['name'])]
 class Recipe
 {
@@ -48,17 +48,9 @@ class Recipe
     #[Groups(['recipe:read', 'recipe:write'])]
     private ?string $description = null;
 
-    #[ORM\Column]
-    #[Groups(['recipe:read', 'recipe:write', 'meal:read'])]
-    private ?int $defaultPortions = null;
-
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     #[Groups(['recipe:read', 'recipe:write'])]
     private ?string $instructions = null;
-
-    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2, nullable: true)]
-    #[Groups(['recipe:read', 'recipe:write'])]
-    private ?string $estimatedCost = null;
 
     #[ORM\Column]
     #[Groups(['recipe:read'])]
@@ -66,6 +58,11 @@ class Recipe
 
     #[ORM\ManyToMany(targetEntity: Meal::class, mappedBy: 'recipes')]
     private Collection $meals;
+
+    #[ORM\ManyToOne(inversedBy: 'recipes')]
+    #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['recipe:read', 'recipe:write'])]
+    private ?Trip $trip = null;
 
     #[ORM\OneToMany(mappedBy: 'recipe', targetEntity: RecipeIngredient::class, cascade: ['persist', 'remove'])]
     #[Groups(['recipe:read', 'recipe:write', 'meal:read'])]
@@ -105,17 +102,6 @@ class Recipe
         return $this;
     }
 
-    public function getDefaultPortions(): ?int
-    {
-        return $this->defaultPortions;
-    }
-
-    public function setDefaultPortions(int $defaultPortions): static
-    {
-        $this->defaultPortions = $defaultPortions;
-        return $this;
-    }
-
     public function getInstructions(): ?string
     {
         return $this->instructions;
@@ -127,20 +113,20 @@ class Recipe
         return $this;
     }
 
-    public function getEstimatedCost(): ?string
-    {
-        return $this->estimatedCost;
-    }
-
-    public function setEstimatedCost(?string $estimatedCost): static
-    {
-        $this->estimatedCost = $estimatedCost;
-        return $this;
-    }
-
     public function getCreatedAt(): ?\DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getTrip(): ?Trip
+    {
+        return $this->trip;
+    }
+
+    public function setTrip(?Trip $trip): static
+    {
+        $this->trip = $trip;
+        return $this;
     }
 
     /**
@@ -196,14 +182,20 @@ class Recipe
     }
 
     /**
-     * Calcule le coût par portion de la recette
+     * Calcule le coût par personne de la recette (somme des pricePerPerson)
      */
     #[Groups(['recipe:read'])]
     public function getCostPerPortion(): ?float
     {
-        if ($this->defaultPortions === null || $this->defaultPortions === 0 || $this->estimatedCost === null) {
-            return null;
+        $total = 0.0;
+        $hasPrice = false;
+        foreach ($this->recipeIngredients as $recipeIngredient) {
+            $price = $recipeIngredient->getPricePerPerson();
+            if ($price !== null) {
+                $total += (float) $price;
+                $hasPrice = true;
+            }
         }
-        return (float) $this->estimatedCost / $this->defaultPortions;
+        return $hasPrice ? $total : null;
     }
 }

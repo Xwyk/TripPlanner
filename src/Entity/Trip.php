@@ -150,10 +150,15 @@ class Trip
     ])]
     private Collection $meals;
 
+    /** @var Collection<int, Recipe> */
+    #[ORM\OneToMany(mappedBy: 'trip', targetEntity: Recipe::class, cascade: ['persist', 'remove'])]
+    private Collection $recipes;
+
     public function __construct()
     {
         $this->participantTrips = new ArrayCollection();
         $this->meals = new ArrayCollection();
+        $this->recipes = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
         $this->startDate = new \DateTimeImmutable('now');
     }
@@ -272,6 +277,33 @@ class Trip
         if ($this->meals->removeElement($meal)) {
             if ($meal->getTrip() === $this) {
                 $meal->setTrip(null);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Recipe>
+     */
+    public function getRecipes(): Collection
+    {
+        return $this->recipes;
+    }
+
+    public function addRecipe(Recipe $recipe): static
+    {
+        if (!$this->recipes->contains($recipe)) {
+            $this->recipes->add($recipe);
+            $recipe->setTrip($this);
+        }
+        return $this;
+    }
+
+    public function removeRecipe(Recipe $recipe): static
+    {
+        if ($this->recipes->removeElement($recipe)) {
+            if ($recipe->getTrip() === $this) {
+                $recipe->setTrip(null);
             }
         }
         return $this;
