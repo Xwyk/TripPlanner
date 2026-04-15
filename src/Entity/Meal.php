@@ -84,6 +84,7 @@ class Meal
     #[ORM\OneToMany(mappedBy: 'meal', targetEntity: ParticipantMeal::class, cascade: ['persist', 'remove'])]
     #[Groups([
         'meal:read',
+        'trip:read',
     ])]
     private Collection $participantMeals;
 
@@ -144,7 +145,7 @@ class Meal
         return $this;
     }
 
-    #[Groups(['meal:read'])]
+    #[Groups(['meal:read', 'trip:read'])]
     public function getNumberOfPortions(): int
     {
         return $this->participantMeals->count();
@@ -237,7 +238,7 @@ class Meal
     /**
      * Calcule le coût par personne pour ce repas (somme des costPerPortion des recettes)
      */
-    #[Groups(['meal:read'])]
+    #[Groups(['meal:read', 'trip:read'])]
     public function getCostPerPortion(): ?float
     {
         $total = 0.0;
@@ -255,7 +256,7 @@ class Meal
     /**
      * Calcule le coût total du repas (costPerPortion * nombre de participants)
      */
-    #[Groups(['meal:read'])]
+    #[Groups(['meal:read', 'trip:read'])]
     public function getTotalCost(): ?float
     {
         $costPerPortion = $this->getCostPerPortion();

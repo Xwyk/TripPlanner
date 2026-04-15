@@ -19,9 +19,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ApiResource(
     operations: [
         new GetCollection(),
-        new Post(),
+        new Post(denormalizationContext: ['groups' => ['recipe:write', 'recipeIngredient:write']]),
         new Get(),
-        new Put(),
+        new Put(denormalizationContext: ['groups' => ['recipe:write', 'recipeIngredient:write']]),
         new Delete(),
     ],
     normalizationContext: ['groups' => ['recipe:read']],
@@ -54,7 +54,7 @@ class RecipeIngredient
 
     #[ORM\ManyToOne(inversedBy: 'recipeIngredients')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['recipe:write'])]
+    #[Groups(['recipeIngredient:write'])]
     private ?Recipe $recipe = null;
 
     #[ORM\ManyToOne(inversedBy: 'recipeIngredients')]

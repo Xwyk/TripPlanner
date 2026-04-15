@@ -44,7 +44,7 @@ class ParticipantMeal
 
     #[ORM\ManyToOne(inversedBy: 'participantMeals')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['participantMeal:read', 'participantMeal:write', 'meal:read', ApiGroups::GROUP_READ])]
+    #[Groups(['participantMeal:read', 'participantMeal:write', 'meal:read', 'trip:read', ApiGroups::GROUP_READ])]
     private ?Participant $participant = null;
 
     #[ORM\ManyToOne(inversedBy: 'participantMeals')]

@@ -181,6 +181,15 @@ class Recipe
         return $this;
     }
 
+    public function setRecipeIngredients(Collection $recipeIngredients): static
+    {
+        $this->recipeIngredients->clear();
+        foreach ($recipeIngredients as $recipeIngredient) {
+            $this->addRecipeIngredient($recipeIngredient);
+        }
+        return $this;
+    }
+
     /**
      * Calcule le coût par personne de la recette (somme des pricePerPerson)
      */

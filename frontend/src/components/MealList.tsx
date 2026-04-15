@@ -133,77 +133,75 @@ const MealList: React.FC<MealListProps> = ({ tripId, participants = [], startDat
       {meals.length === 0 && !formMode ? (
         <p className="empty-state">Aucun repas planifié pour le moment.</p>
       ) : (
-        <table className="meal-table">
-          <thead>
-            <tr>
-              <th>Repas</th>
-              <th>Participants</th>
-              <th>Recettes</th>
-              <th>Coût</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedDates.map((date) => {
-              const dayMeals = mealsByDate[date]
-                .sort((a, b) => (mealTypeOrder[a.mealType ?? ''] ?? 99) - (mealTypeOrder[b.mealType ?? ''] ?? 99));
+        sortedDates.map((date) => {
+          const dayMeals = mealsByDate[date]
+            .sort((a, b) => (mealTypeOrder[a.mealType ?? ''] ?? 99) - (mealTypeOrder[b.mealType ?? ''] ?? 99));
 
-              return (
-                <React.Fragment key={date}>
-                  <tr className="meal-date-row">
-                    <td colSpan={5}>{formatDateShort(date)}</td>
-                  </tr>
-                  {dayMeals.map((meal) => {
-                    const mealParticipants = getMealParticipants(meal);
-                    const mealRecipes = getMealRecipes(meal);
+          return (
+            <div key={date} style={{ marginBottom: '2rem' }}>
+              <h3 style={{ color: '#475569', fontSize: '1.1rem', marginBottom: '0.75rem', borderBottom: '2px solid #667eea', paddingBottom: '0.5rem' }}>
+                {formatDateShort(date)}
+              </h3>
+              <div className="meal-cards">
+                {dayMeals.map((meal) => {
+                  const mealParticipants = getMealParticipants(meal);
+                  const mealRecipes = getMealRecipes(meal);
+                  const costPerPortion = (meal as any).costPerPortion;
+                  const totalCost = (meal as any).totalCost;
 
-                    return (
-                      <tr key={meal.id} className="meal-row">
-                        <td>
-                          <span className="meal-type-icon">{meal.mealType ? getMealTypeEmoji(meal.mealType) : ''}</span>
-                          {meal.name}
-                        </td>
-                        <td className="meal-participants-cell">
-                          <span className="participant-count">{mealParticipants.length}</span>
-                          {mealParticipants.length > 0 && (
-                            <span className="participant-names"> — {mealParticipants.map(p => p.name).join(', ')}</span>
-                          )}
-                        </td>
-                        <td>
-                          {mealRecipes.length > 0 ? mealRecipes.map((r, i) => (
-                            <React.Fragment key={i}>
-                              {i > 0 && ', '}
-                              <span>
-                                {r.name}
-                                <button type="button" onClick={() => setEditRecipe(r.recipe)} className="btn btn-sm btn-secondary" title="Modifier la recette" style={{ marginLeft: '0.3em', padding: '0 0.3em' }}>✎</button>
-                              </span>
-                            </React.Fragment>
-                          )) : '-'}
-                        </td>
-                        <td>
-                          {(meal as any).totalCost != null || (meal as any).costPerPortion != null ? (
-                            <>
-                              {(meal as any).costPerPortion != null && `${(meal as any).costPerPortion.toFixed(2)}€/pers`}
-                              {(meal as any).totalCost != null && ` (${(meal as any).totalCost.toFixed(2)}€ total)`}
-                            </>
-                          ) : '-'}
-                        </td>
-                        <td className="meal-actions-cell">
-                          <button onClick={() => setFormMode({ mode: 'edit', meal })} className="btn btn-sm btn-secondary">
-                            Modifier
-                          </button>
-                          <button onClick={() => meal.id && deleteMeal(meal.id)} className="btn btn-sm btn-danger">
-                            Supprimer
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+                  return (
+                    <div key={meal.id} className="meal-card">
+                      <div className="meal-header">
+                        <h3>{getMealTypeEmoji(meal.mealType ?? '')} {meal.name}</h3>
+                        <span className="meal-type-badge">{meal.mealType}</span>
+                      </div>
+                      <div className="meal-info">
+                        {mealParticipants.length > 0 && (
+                          <p>
+                            <strong>{mealParticipants.length} participant{mealParticipants.length > 1 ? 's' : ''}</strong> — {mealParticipants.map(p => p.name).join(', ')}
+                          </p>
+                        )}
+                        {mealParticipants.length === 0 && (
+                          <p><strong>Aucun participant</strong></p>
+                        )}
+                        {mealRecipes.length > 0 && (
+                          <p>
+                            {mealRecipes.map((r, i) => (
+                              <React.Fragment key={i}>
+                                {i > 0 && ' · '}
+                                <span>
+                                  {r.name}
+                                  <button type="button" onClick={() => setEditRecipe(r.recipe)} className="btn btn-sm btn-secondary" title="Modifier la recette" style={{ marginLeft: '0.3em', padding: '0 0.3em' }}>✎</button>
+                                </span>
+                              </React.Fragment>
+                            ))}
+                          </p>
+                        )}
+                        {mealRecipes.length === 0 && (
+                          <p>Aucune recette</p>
+                        )}
+                        {costPerPortion != null && (
+                          <p>
+                            <strong>{costPerPortion.toFixed(2)}€/pers</strong>
+                            {totalCost != null && ` (${totalCost.toFixed(2)}€ total)`}
+                          </p>
+                        )}
+                      </div>
+                      <div className="meal-actions">
+                        <button onClick={() => setFormMode({ mode: 'edit', meal })} className="btn btn-sm btn-secondary">
+                          Modifier
+                        </button>
+                        <button onClick={() => meal.id && deleteMeal(meal.id)} className="btn btn-sm btn-danger">
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })
       )}
     </div>
   );
@@ -216,10 +214,6 @@ const formatDateShort = (dateString: string): string => {
     day: 'numeric',
     month: 'long',
   });
-};
-
-const formatMoney = (amount: string): string => {
-  return `${parseFloat(amount).toFixed(2)}€`;
 };
 
 export default MealList;

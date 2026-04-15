@@ -135,7 +135,7 @@ const TripDetails: React.FC = () => {
         <div>
           <h1>{trip.name}</h1>
           <p className="trip-meta">
-            {trip.startDate ? formatDate(trip.startDate) : 'N/A'} - {trip.nights} nuits - Hébergement: {formatMoney(trip.cottageCost?.toString() ?? '0')} - Repas: {formatMoney(trip.mealCost?.toString() ?? '0')}
+            {trip.startDate ? formatDate(trip.startDate) : 'N/A'} - {trip.nights} nuits - Hébergement: {formatMoney(trip.cottageCost?.toString() ?? '0')} - Repas: {costs ? formatMoney(costs.total_meal_cost.toString()) : '-'}
           </p>
         </div>
         <div className="header-actions">
@@ -164,16 +164,16 @@ const TripDetails: React.FC = () => {
           <h2>📊 Budget</h2>
           <div className="budget-stats">
             <div className="stat-card">
-              <h4>Budget Total</h4>
+              <h4>Hébergement</h4>
               <p className="stat-value">{formatMoney(trip.cottageCost?.toString() ?? '0')}</p>
             </div>
             <div className="stat-card">
-              <h4>Coût par Nuit</h4>
-              <p className="stat-value">{costs.cost_per_night ? formatMoney(costs.cost_per_night.toString()) : 'N/A'}</p>
+              <h4>Repas</h4>
+              <p className="stat-value">{formatMoney(costs.total_meal_cost.toString())}</p>
             </div>
             <div className="stat-card">
-              <h4>Nombre de Nuits</h4>
-              <p className="stat-value">{trip.nights}</p>
+              <h4>Total</h4>
+              <p className="stat-value">{formatMoney((trip.cottageCost + costs.total_meal_cost).toString())}</p>
             </div>
           </div>
 
@@ -183,8 +183,9 @@ const TripDetails: React.FC = () => {
               <div key={participant.id} className="participant-cost-card">
                 <h4>{participant.name}</h4>
                 <div className="cost-details">
-                  <p>Nuits présentes: <strong>{participant.nights_count}</strong></p>
-                  <p>Coût total: <strong className="cost-total">{formatMoney(participant.total_cost.toString())}</strong></p>
+                  <p><strong>{participant.nights_count}</strong> nuits : <strong>{formatMoney(participant.accommodation_cost.toString())}</strong></p>
+                  <p><strong>{participant.meals_count}</strong> repas : <strong>{formatMoney(participant.food_cost.toString())}</strong></p>
+                  <p>Total: <strong className="cost-total">{formatMoney(participant.total_cost.toString())}</strong></p>
                 </div>
               </div>
             ))}

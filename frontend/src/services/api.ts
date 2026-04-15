@@ -66,8 +66,9 @@ const toDateStr = (v: any): string => {
 };
 
 /**
- * Calcule les coûts par participant en divisant le coût de chaque nuit
- * par le nombre de personnes présentes cette nuit-là.
+ * Calcule les coûts par participant :
+ * - Hébergement : coût de chaque nuit divisé par le nombre de personnes présentes
+ * - Repas : somme des costPerPortion des meals où le participant est présent
  */
 export function calculateCosts(t: TripRead) {
   const costPerNight = (t.cottageCost ?? 0) / (t.nights || 1);
@@ -102,23 +103,49 @@ export function calculateCosts(t: TripRead) {
     };
   });
 
-  // Calcule le coût par participant : somme des (costPerNight / nbPresents) pour chaque nuit présente
+  // Calcule le coût repas par participant : somme des costPerPortion des meals où il est présent
+  const meals = (t as any).meals ?? [];
+  const mealCostPerParticipant: Record<number, number> = {};
+  const mealCountPerParticipant: Record<number, number> = {};
+  for (const meal of meals) {
+    const pms = meal.participantMeals ?? [];
+    for (const pm of pms) {
+      const pId = pm.participant?.id;
+      if (pId) {
+        mealCountPerParticipant[pId] = (mealCountPerParticipant[pId] || 0) + 1;
+        const cpp = meal.costPerPortion;
+        if (cpp != null) {
+          mealCostPerParticipant[pId] = (mealCostPerParticipant[pId] || 0) + cpp;
+        }
+      }
+    }
+  }
+
+  // Coût total repas du trip
+  const totalMealCost = meals.reduce((sum: number, m: any) => sum + (m.totalCost ?? 0), 0);
+
+  // Calcule le coût par participant
   const participants = ptData.map((pt) => {
-    let totalCost = 0;
+    let accommodationCost = 0;
     for (const n of pt.nights) {
       const count = nightPresenceCount[n] || 1;
-      totalCost += costPerNight / count;
+      accommodationCost += costPerNight / count;
     }
+    const foodCost = mealCostPerParticipant[pt.id] || 0;
     return {
       id: pt.id,
       name: pt.name,
       nights_count: pt.nights.length,
-      total_cost: Math.round(totalCost * 100) / 100,
+      accommodation_cost: Math.round(accommodationCost * 100) / 100,
+      meals_count: mealCountPerParticipant[pt.id] || 0,
+      food_cost: Math.round(foodCost * 100) / 100,
+      total_cost: Math.round((accommodationCost + foodCost) * 100) / 100,
     };
   });
 
   return {
     cost_per_night: Math.round(costPerNight * 100) / 100,
+    total_meal_cost: Math.round(totalMealCost * 100) / 100,
     participants,
   };
 }
